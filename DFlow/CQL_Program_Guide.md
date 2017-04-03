@@ -201,30 +201,178 @@ DEPLOY APPLICATION PosApp;
 START APPLICATION PosApp;
 </code>
 
+### 分析WAEvent的数据字段
+
+WAEvent是许多Reader输出流使用的数据类型。它的data字段是一个包含一个事件的字段值的数组。以下是在从CsvDataSource在输出流WAEvent格式一个示例事件PosApp示例应用：
+
+<code>
+WAEvent{
+  data: ["COMPANY 1159","IQ6wCy3k7PnAiRAN71ROxcNBavvVoUcwp7y","8229344557372754288","1","20130312173212",
+"0614","USD","329.64","2094770823399082","79769","Odessa"]
+  metadata: {"RecordStatus":"VALID_RECORD","FileName":"posdata.csv","FileOffset":154173}
+  before: null
+  dataPresenceBitMap: "AAA="
+  beforePresenceBitMap: "AAA="
+  typeUUID: null
+}; 
+</code>
+
+dataPresenceBitMap，beforePresenceBitMap并且typeUUID被保留并且应该被忽略。
+
+要解析 data 数组，PosApp使用以下TQL：
+
+<code>
+CREATE CQ CsvToPosData
+INSERT INTO PosDataStream
+SELECT TO_STRING(data[1]) AS merchantId,
+  TO_DATEF(data[4],'yyyyMMddHHmmss') AS dateTime,
+  DHOURS(TO_DATEF(data[4],'yyyyMMddHHmmss')) AS hourValue,
+  TO_DOUBLE(data[7]) AS amount,
+  TO_STRING(data[9]) AS zip
+FROM CsvStream;
+</code>
+
+PosDataStream在 Select 语句中使用数据类型和AS字符串自动创建。
+在 Select 语句中的data[#]函数顺序决定了输出中数据域的顺序。这些可能通过任意顺序来指定：例如，data[1]可以在data[0]之前。
+通过 Select 语句的不能被引用的值域将被丢弃。
+data[#]函数从0开始在数组中计数值域，因此数组(COMPANY 1159)中的第一个值域将被忽略。
+No-String 的值将被转换为通过输出流所需要的相关类型，通过TO_DATEF, DHOURS, 和 TO_DOUBLE 函数(查看函数详情)。
+
+在PosDataStream输出中，上述示例事件的解析版本为：
+
+<code>
+merchantId：“IQ6wCy3k7PnAiRAN71ROxcNBavvVoUcwp7y”
+ dateTime：1363134732000
+ hourValue：17
+ amount：329.64
+ zip：“79769”
+</code>
+
+见PosApp以获取更多信息。另请参见MultiLogApp中ParseAccessLog和ParseLog4J的讨论。
 
 
+### 使用正则表达式
+
+DFlow支持在您的TQL应用程序中使用正则表达式（regex）。重要的是要记住，正则表达式的DFlow实现是基于Java的（请参阅 java.util.regex.Pattern），因此在开发正则表达式时需要注意以下几点：
+— 反斜杠字符（\）在Java字符串中被识别为转义字符，因此如果要定义类似\w正则表达式的内容，请\\w在这种情况下使用。
+— 在正则表达式中，\\匹配单个反斜杠字面值。因此，如果要在正则表达式的Striim Java实现中使用反斜杠字符作为字面值，则必须实际使用\\\\。
+
+— 该java.lang.String中类为您提供了这些方法支持正则表达式：matches(), split(), replaceFirst(), replaceAll()。请注意，这些String.replace()方法不支持正则表达式。
+
+CQL支持来自java.util.regex的正则表达式语法和构造。请注意，这与POSIX正则表达式有一些区别。
+
+如果您刚开始使用正则表达式，请参考以下资源来开始使用：
+
+<a href="http://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html">java.util.regex.Pattern</a>
+
+<a href="https://docs.oracle.com/javase/tutorial/essential/regex/">Oracle：Java教程。课程：正则表达式</a>
+
+<a href="http://www.vogella.com/tutorials/JavaRegularExpressions/article.html">Lars Vogel：Java Regex - 教程</a>
 
 
+你可以使用正则表达式LIKE和NOT LIKE表达式。例如：
 
+WHERE ProcessName NOT LIKE '%.tmp%'：从临时文件中过滤掉数据
 
+WHERE instance_applications LIKE '%Apache%'：在其名称中仅选择具有Apache的应用程序
 
+WHERE MerchantID LIKE '45%'：仅选择ID为45的商家。
 
+MultiLogApp示例Apache访问日志数据中的以下条目包括有关第4行REST API调用的信息：
 
+<code>
+0: 206.130.134.68
+1: -
+2: AWashington
+3: 25/Oct/2013:11:28:36.960 -0700
+4: GET http://cloud.saas.me/query?type=ChatterMessage&id=01e33d9a-34ee-ccd0-84b9-
+   14109fcf2383&jsessionId=01e33d9a-34c9-1c68-84b9-14109fcf2383 HTTP/1.1
+5: 200
+6: 0
+7: -
+8: Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu 
+   Chromium/28.0.1500.71 Chrome/28.0.1500.71 Safari/537.36
+9: 1506
+</code>
 
+该MATCH函数也使用正则表达式。CQ中的MATCH功能ParseAccessLog解析第4行中的信息以提取会话ID：
 
+<code>
+MATCH（data [4]， “。* jsessionId =（。*）”）
+</code>
 
+解析的输出是：
 
+<code>
+sessionId： “01e33d9a-34c9-1c68-84b9-14109fcf2383”
+</code>
 
+以下，也来自MultiLogApp，是WAEvent 数组的data[2]元素的示例：RawXMLStreamdata
 
+<code>
+"Problem in API call [api=login] [session=01e3928f-e975-ffd4-bdc5-14109fcf2383] 
+[user=HGonzalez] [sobject=User]","com.me.saas.SaasMultiApplication$SaasException: 
+Problem in API call [api=login] [session=01e3928f-e975-ffd4-bdc5-14109fcf2383] 
+[user=HGonzalez] [sobject=User]\n\tat com.me.saas.SaasMultiApplication.login
+(SaasMultiApplication.java:1253)\n\tat 
+sun.reflect.GeneratedMethodAccessor11.invoke(Unknown Source)\n\tat 
+sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+\n\tat java.lang.reflect.Method.invoke(Method.java:606)\n\tat 
+com.me.saas.SaasMultiApplication$UserApiCall.invoke(SaasMultiApplication.java:360)\n\tat 
+com.me.saas.SaasMultiApplication$Session.login(SaasMultiApplication.java:1447)\n\tat 
+com.me.saas.SaasMultiApplication.main(SaasMultiApplication.java:1587)"
+</code>
 
+这由ParseLog4JCQ 解析如下：
 
+<code>
+MATCH（data [2]，'\\\\ [api =（[a-zA-Z0-9] *）\\\\]'），
+MATCH（data [2]，'\\\\ [session =（[a-zA-Z0-9 \\  - ] *）\\\\]'），
+MATCH（data [2]，'\\\\ [user =（[a-zA-Z0-9 \\  - ] *）\\\\]'），
+MATCH（data [2]，'\\\\ [sobject =（[a-zA-Z0-9] *）\\\\]'）
+</code>
 
+解析的输出是：
 
+<code>
+api： “login” 
+sessionId： “01e3928f-e975-ffd4-bdc5-14109fcf2383” 
+userId： “HGonzalez” 
+sobject： “User”
+</code>
 
+有关其他示例，请参阅使用正则表达式解析源，FreeFormTextParser和MultiFileReader。
 
+### 处理异常
 
+默认情况下，当DFlow遇到非致命异常时，它会忽略它并继续。您可以在EXCEPTIONHANDLER语句中添加一个子句来CREATE APPLICATION记录异常并执行各种操作。语法是：
+<code>
+CREATE APPLICATION ... EXCEPTIONHANDLER ([<exception>:'<action>',...]);
+</code>
 
+支持的异常为:
 
+ArithmeticException
+
+ClassCastException
+
+ConnectionException
+
+InvalidDataException
+
+NullPointerException
+
+NumberFormatException
+
+SystemException
+
+UnknownException
+
+支持的操作为:
+
+IGNORE
+
+STOP
 
 
 
