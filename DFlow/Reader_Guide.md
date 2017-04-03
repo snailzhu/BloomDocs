@@ -9,7 +9,7 @@ Readers通过在数据源和缓存中指定来使用。
 一些 Reader 提供了一些解析器。例如，TCPReader可以使用BinaryParser，DSVParser或XMLParser。有关详细信息，请参阅解析器。
 
 
-### DataBaseReader
+#### DataBaseReader
 
 DatabaseReader可以从Microsoft SQL Server，MySQL、Postgres和Oracle等关系型数据库中的一个或多个表查询所需要的数据。
 
@@ -112,17 +112,110 @@ DatabaseReader数据类型支持和转换：
 </table>
 
 
+#### FileReader
+
+从磁盘中读取一个文件
+ 
+<table>
+<tr><td>属性</td><td>类型</td><td>默认值</td><td>解释</td></tr>
+<tr><td>BlockSize</td><td>java.lang.Integer</td><td>64</td><td>每个读取操作的数据量（KB）</td></tr>
+<tr><td>compressiontype</td><td>java.lang.String</td><td></td><td>当设置一个文件或gzip的文件时设置.</td></tr>
+<tr><td>directory</td><td>java.lang.String</td><td></td><td>包含文件的目录的路径; 该路径可能相对于DFlow安装目录，例如Samples/PosApp/appdata或从根目录</td></tr>
+<tr><td>positionbyeof</td><td>java.lang.Boolean
+
+</td><td>True</td><td>如果设置为True，则读取从文件末尾开始，因此仅获取新数据。
+
+如果设置为False，则读取将从文件的开头开始。
+
+当FileReader与缓存一起使用时，此设置将被忽略，并且读取始终从文件的开头开始。
+
+当您使用Source Preview创建一个FileReader时，将其设置为False。</td></tr>
+<tr><td>rolloverstyle</td><td>java.lang.String</td><td>Default</td><td>设置为log4j如果读取使用RollingFileAppender创建的Log4J文件。</td></tr>
+<tr><td>skipbom</td><td>java.lang.Boolean</td><td>True</td><td>如果设置为True，当通配符值指定多个文件时，DFlow将读取第一个文件中的字节顺序标记（BOM），并跳过所有其他文件中的BOM。如果设置为False，它将读取每个文件中的BOM。</td></tr>
+<tr><td>WildCard</td><td>java.lang.String</td><td></td><td>文件的名称或匹配多个文件的通配符模式（例如* .xml）</td></tr>
+</table>
+
+FileReader可以选择解析器。有关详细信息，请参阅支持的读取器解析器组合。
+输出类型是WAevent，除非使用JSONParser，在这种情况下，您必须定义适当的类型（请参阅JSONParser）。
+
+来自PosApp示例应用程序的示例：
+
+<code>
+CREATE source CsvDataSource USING FileReader (
+  directory:'Samples/PosApp/appData',
+  wildcard:'posdata.csv',
+  blocksize: 10240,
+  positionByEOF:false
+)
+PARSE USING DSVParser (
+  header:Yes,
+  trimquote:false
+) OUTPUT TO CsvStream;
+</code>
+
+有关其他示例，请参阅PosApp了解详细说明和MultiLogApp。
+
+#### MultiFileReader
+
+<table>
+<tr><td>属性</td><td>类型</td><td>默认值</td><td>解释</td></tr>
+<tr><td>BlockSize</td><td>java.lang.Integer</td><td>64</td><td>每个读取操作的数据量（KB）</td></tr>
+<tr><td>
+字符集</td><td>java.lang.String
+
+</td><td>UTF-8</td><td></td></tr>
+
+<tr><td>compressiontype</td><td>java.lang.String</td><td></td><td>当设置一个文件或gzip的文件时设置.</td></tr>
+<tr><td>directory</td><td>java.lang.String</td><td></td><td>包含文件的目录的路径; 该路径可能相对于DFlow安装目录，例如Samples/PosApp/appdata或从根目录</td></tr>
+
+<tr><td>
+组模式</td><td>java.lang.String
+
+</td><td></td><td>定义每组文件的滚动模式的正则表达式（请参阅使用正则表达式（正则表达式））
+</td></tr>
 
 
+<tr><td>positionbyeof</td><td>java.lang.Boolean</td><td>True</td><td>如果设置为True，则读取从文件末尾开始，因此仅获取新数据。
+如果设置为False，则读取将从文件的开头开始。
+</td></tr>
+<tr><td>rolloverstyle</td><td>java.lang.String</td><td>Default</td><td>设置为log4j如果读取使用RollingFileAppender创建的Log4J文件。</td></tr>
+<tr><td>skipbom</td><td>java.lang.Boolean</td><td>True</td><td>如果设置为True，当通配符值指定多个文件时，DFlow将读取第一个文件中的字节顺序标记（BOM），并跳过所有其他文件中的BOM。如果设置为False，它将读取每个文件中的BOM。</td></tr>
 
+<tr><td>threadpoolsize
+</td><td>
+lava.lang.integer
+</td><td>20</td><td>为获得最佳性能，请设置为一次读取的最大文件数。
+</td></tr>
 
+<tr><td>WildCard</td><td>java.lang.String</td><td></td><td>文件的名称或匹配多个文件的通配符模式（例如* .xml）</td></tr>
 
+<tr><td>yieldAfter</td><td>lava.lang.integer
 
+</td><td>20</td><td>线程将被切换到下一个读取过程的事件数
+</td></tr>
+</table>
 
+输出类型是  WAevent，  除非使用JSONParser，在这种情况下，您必须定义适当的类型（请参阅JSONParser）。
 
+该示例将识别log.proc1.0并log.proc1.1作为一个日志的一部分，log.proc2.0并将log.proc2.1其视为另一个日志的一部分，确保来自每个日志的所有事件将以正确的顺序读取。
 
+<code>
+CREATE SOURCE MFRtest USING MultiFileReader (
+  directory:'Samples',
+  WildCard:'log.proc*',
+  grouppattern:'(?:(?:(?:<[^>]+>)*[^<.]*)*.){2}'
+)
+</code>
 
+或者，您可以使用此语句来确保每个日志中的事件以正确的顺序读取：
 
+<code>
+CREATE SOURCE MFRtest USING MultiFileReader (
+  directory:'Samples',
+  WildCard:'log.proc*',
+  grouppattern:'log\\.proc[0-9]{1,3}'
+)
+</code>
 
 
 
