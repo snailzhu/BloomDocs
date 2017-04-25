@@ -20,15 +20,61 @@
 $ sbin/snappy-start-all.sh
 </code>
 
+在本地机上的整个集群启动可能需要30秒或更长时间来启动。
 
-### SnappyData思路
+打印输出：输出显示如下：
+
+<code>
+Starting SnappyData Locator using peer discovery on: localhost[10334]
+Starting DRDA server for SnappyData at address localhost/127.0.0.1[1527]
+Logs generated in /home/user/snappyData/work/localhost-locator-1/snappylocator.log
+SnappyData Locator pid: 9368 status: running
+Starting SnappyData Server using locators for peer discovery: user1-laptop[10334]
+Starting DRDA server for SnappyData at address localhost/127.0.0.1[1527]
+Logs generated in /home/user1/snappyData/work/localhost-server-1/snappyserver.log
+SnappyData Server pid: 9519 status: running
+  Distributed system now has 2 members.
+  Other members: localhost(9368:locator)<v0>:16944
+Starting SnappyData Leader using locators for peer discovery: user1-laptop[10334]
+Logs generated in /home/user1/snappyData/work/localhost-lead-1/snappyleader.log
+SnappyData Leader pid: 9699 status: running
+  Distributed system now has 3 members.
+  Other members: localhost(9368:locator)<v0>:16944, 192.168.63.1(9519:datastore)<v1>:46966
+</code>
+
+检查状态：您可以使用以下命令检查正在运行的集群的状态：
+
+<code>
+$ sbin/snappy-status-all.sh
+SnappyData Locator pid: 9368 status: running
+SnappyData Server pid: 9519 status: running
+  Distributed system now has 2 members.
+  Other members: localhost(9368:locator)<v0>:16944
+SnappyData Leader pid: 9699 status: running
+  Distributed system now has 3 members.
+  Other members: localhost(9368:locator)<v0>:16944, 192.168.63.1(9519:datastore)<v1>:46966
+
+</code>
+
+您可以通过http://<leadHostname>:5050在浏览器中打开来检查SnappyData UI。使用Snappy SQL shell连接到集群并执行各种SQL操作。
+
+关闭群集：您可以使用以下命令关闭群集：
+
+<code>
+$ sbin/snappy-stop-all.sh
+The SnappyData Leader has stopped.
+The SnappyData Server has stopped.
+The SnappyData Locator has stopped.
+</code> 
+
+### 
 
 
 
-### 主要特性
+### 
 
 
-### Spark运行时的扩展
+### 
 
 
 
