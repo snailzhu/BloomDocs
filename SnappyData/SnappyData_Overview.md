@@ -67,12 +67,57 @@ The SnappyData Server has stopped.
 The SnappyData Locator has stopped.
 </code> 
 
-### 
+### 在多个主机上启动SnappyData集群
+
+在多台主机上启动群集：
+
+1.在多个节点上运行SnappyData的最简单的方法是在所有节点上使用NFS等共享文件系统。
+您还可以在集群的每个节点上都安装相关产品。如果所有节点都具有NFS访问权限，在任何一个节点上都安装一份SnappyData。
+2.使用conf文件夹中提供的模板创建配置文件。复制模板文件servers.template，locators.template，leads.template，并将其重命名为servers，locators，leads等。 
+编辑文件以包含主机名，然后启动server，locator和lead。有关属性的更多信息，请参阅配置部分。
+
+注意：建议您在集群中的所有主机上设置无密码的SSH。有关安装和集群配置的更多详细信息，请参阅文档。
 
 
+### 如何在群集中运行Spark代码
 
-### 
+一个Spark程序，运行在SnappyData集群中，作为一个SnappyData Job来实现。
 
+实现作业：SnappyData作业是实现SnappySQLJob或SnappyStreamingJob（用于流应用程序）trait的类或对象。在runSnappyJob作业的方法中，您可以使用传递给它的SnappySession对象实例来实现Spark程序的逻辑。您可以执行所有操作，如创建表，加载数据，使用SnappySession执行查询。
+
+任何Spark API都可以由SnappyJob调用。
+
+<code>
+class CreatePartitionedRowTable extends SnappySQLJob { </p>
+  /\** SnappyData uses this as an entry point to execute Snappy jobs. **/</p>
+  def runSnappyJob(sc: SnappySession, jobConfig: Config): Any</p>
+
+  /\**
+  SnappyData calls this function to validate the job input and reject invalid job requests.
+  You can implement custom validations here, for example, validating the configuration parameters
+  **/ </p>
+  def isValidJob(sc: SnappySession, config: Config): SnappyJobValidation
+}
+</code>
+
+依赖关系：要编译的 Job，请使用Maven / SBT依赖关系来获取最新发布的SnappyData版本。
+
+示例：Maven依赖关系：
+
+<code>
+<\!-- https://mvnrepository.com/artifact/io.snappydata/snappydata-cluster_2.11 -->
+<dependency>
+    <groupId>io.snappydata</groupId>
+    <artifactId>snappydata-cluster_2.11</artifactId>
+    <version>0.8</version>
+</dependency>
+</code>
+
+示例：SBT依赖：
+<code>
+// https://mvnrepository.com/artifact/io.snappydata/snappydata-cluster_2.11
+libraryDependencies += "io.snappydata" % "snappydata-cluster_2.11" % "0.8"
+</code>
 
 ### 
 
