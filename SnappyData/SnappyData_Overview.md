@@ -160,5 +160,3 @@ libraryDependencies += "io.snappydata" % "snappydata-cluster_2.11" % "0.8"
 
 
 
-
-
